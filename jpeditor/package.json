@@ -1,0 +1,66 @@
+{
+  "name": "jpeditor",
+  "private": true,
+  "version": "0.7.6",
+  "type": "module",
+  "description": "简谱（JP-Word/.jpwabc）与文本谱（番茄简谱 / 诗歌本动态谱）在线排版与编辑器，支持图片识谱（OMR）、简谱·五线谱混排、MusicXML 导入导出与 PDF/PNG/MIDI/PPTX 导出 · An open-source jianpu (numbered musical notation) editor & typesetter.",
+  "homepage": "https://lodebar2026.github.io/jpeditor/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lodebar2026/jpeditor.git"
+  },
+  "author": "lodebar2026",
+  "license": "MIT",
+  "keywords": [
+    "jianpu",
+    "numbered-notation",
+    "music-notation",
+    "sheet-music",
+    "musicxml",
+    "jpwabc",
+    "fanqie-jianpu",
+    "jianpu-text",
+    "omr",
+    "abc-notation",
+    "pptx",
+    "tauri",
+    "svg"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "release": "bash scripts/release.sh",
+    "build:cli": "vite build --config vite.cli.config.ts",
+    "pack:omr": "node scripts/pack-omr.mjs"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.43.0",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.5.1",
+    "@tauri-apps/plugin-opener": "^2",
+    "codemirror": "^6.0.2",
+    "fflate": "^0.8.3",
+    "jspdf": "^4.2.1",
+    "onnxruntime-web": "^1.27.0",
+    "opencc-js": "^1.4.1",
+    "opentype.js": "^2.0.0",
+    "pdfjs-dist": "^6.1.200",
+    "sharp": "^0.35.4",
+    "smplr": "^1.0.0"
+  },
+  "devDependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
+    "@tauri-apps/cli": "^2",
+    "@types/opentype.js": "^1.3.10",
+    "onnxruntime-node": "^1.29.0",
+    "pdf-lib": "^1.17.1",
+    "playwright": "^1.60.0",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3"
+  }
+}

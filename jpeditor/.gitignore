@@ -1,0 +1,66 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+dist-cli
+*.local
+
+# OMR 批量测试输出
+measure-all.csv
+pdf-diff.csv
+pdf-diff/
+pdf-diff-marks.json
+pdf-pages.csv
+pdf-pages/
+pdf-layout.json
+pdf-out/
+staff-out/
+pptx-out/
+
+# 测试语料与 GT 不入本仓库（语料本身是版权材料），实体在同级私有仓库 dev/testdata/，这里是指过去的符号链接。
+# testdata/ 只放语料与 GT；回归基线、快照、报告等派生数据在 dev/data/。
+/testdata
+
+# pdf.js 位图解码器 wasm：来自 pdfjs-dist 包，构建时从 node_modules 拷入（见 vite.config.ts），不入库
+public/redist/pdfjs
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 乐句排版回归的 musicxml 缓存（scripts/phrase-lines.mjs）
+.phrase-cache
+
+# 文本谱规范外写法笔记（本地保留，不入库）
+docs/实现/文本谱-规范外写法.md
+
+# 国标（简谱/五线谱通用规范）原件与转出的 md，本地参考，不入库
+docs/规范/
+
+# 遗留问题清单（本地待办，不入库）
+docs/遗留问题.md
+
+# ss 语法收敛的待办（本地保留，不入库）
+docs/ss-收敛待办.md
+
+# Swift 工具的编译产物（源码在 tools/*.swift，编译命令见 CLAUDE.md）
+tools/vision-ocr
+dist-pkg
+
+# 回归脚本、语料与歌本样式：本地私有仓库（与本仓库同级的 dev/），不入库
+dev/

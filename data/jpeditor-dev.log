@@ -1,0 +1,118 @@
+
+  [32m[1mVITE[22m v6.4.3[39m  [2mready in [0m[1m1308[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m1420[22m/[39m
+[2m07:58:39[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles.css, /src/styles.css?direct[22m
+[2m08:17:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles.css, /src/styles.css?direct[22m
+[2m08:22:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.ts[22m
+[2m20:27:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.ts[22m
+[2m20:27:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m20:27:59[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:28:00[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/editor/app.ts[22m
+[2m20:28:00[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m20:28:00[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.ts[22m
+[2m20:28:00[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m20:28:00[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:28:04[22m [36m[1m[vite][22m[39m server restarted.
+[2m20:33:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.ts[22m
+[2m20:33:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m20:33:11[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:33:11[22m [36m[1m[vite][22m[39m server restarted.
+[2m20:33:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m20:38:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.ts[22m
+[2m20:38:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m20:38:32[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[31mfailed to load config from F:\WorkSpace\ai\jianpu\jpeditor\vite.config.ts[39m
+[2m20:38:32[22m [31m[1m[vite][22m[39m config must export or return an object.
+[2m20:38:32[22m [31m[1m[vite][22m[39m server restart failed
+[2m20:38:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m20:38:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/editor/app.ts[22m
+[2m20:38:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m20:38:32[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:38:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/editor/app.ts[22m
+[2m20:38:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m20:38:32[22m [36m[1m[vite][22m[39m server restarted.
+[2m20:43:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.ts[22m
+[2m20:43:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m20:43:11[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:43:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/editor/app.ts[22m
+[2m20:43:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m20:43:11[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:43:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m20:43:11[22m [36m[1m[vite][22m[39m server restarted.
+[2m20:48:30[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m20:48:31[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:48:31[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m20:48:31[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m20:48:31[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/editor/app.ts[22m
+[2m20:48:31[22m [36m[1m[vite][22m[39m server restarted.
+[2m20:54:37[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:54:37[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m20:54:37[22m [36m[1m[vite][22m[39m server restarted.
+[2m20:58:11[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:58:11[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m20:58:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m20:58:11[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:00:16[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:00:16[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:00:16[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:02:56[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:02:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:02:56[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:05:24[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:05:24[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:05:25[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:08:00[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[31mfailed to load config from F:\WorkSpace\ai\jianpu\jpeditor\vite.config.ts[39m
+[2m22:08:00[22m [31m[1m[vite][22m[39m config must export or return an object.
+[2m22:08:00[22m [31m[1m[vite][22m[39m server restart failed
+[2m22:08:01[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:08:01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:08:01[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:13:02[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[31mfailed to load config from F:\WorkSpace\ai\jianpu\jpeditor\vite.config.ts[39m
+[2m22:13:02[22m [31m[1m[vite][22m[39m config must export or return an object.
+[2m22:13:02[22m [31m[1m[vite][22m[39m server restart failed
+[2m22:13:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:13:02[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:13:02[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:18:02[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[31mfailed to load config from F:\WorkSpace\ai\jianpu\jpeditor\vite.config.ts[39m
+[2m22:18:02[22m [31m[1m[vite][22m[39m config must export or return an object.
+[2m22:18:02[22m [31m[1m[vite][22m[39m server restart failed
+[2m22:18:02[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:18:02[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:23:01[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:23:01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:23:01[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:23:01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:23:01[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:27:59[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[31mfailed to load config from F:\WorkSpace\ai\jianpu\jpeditor\vite.config.ts[39m
+[2m22:27:59[22m [31m[1m[vite][22m[39m config must export or return an object.
+[2m22:27:59[22m [31m[1m[vite][22m[39m server restart failed
+[2m22:28:00[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:28:00[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:28:00[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:33:02[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:33:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:33:02[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:33:02[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:33:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:33:03[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:37:56[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:37:56[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:37:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:42:58[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:42:58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:42:58[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m22:42:58[22m [36m[1m[vite][22m[39m server restarted.
+[2m02:14:10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.ts[22m
+[2m02:14:10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/omr/runtime.browser.ts[22m
+[2m02:14:10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m02:14:11[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m02:14:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/editor/app.ts[22m
+[2m02:14:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m02:14:11[22m [36m[1m[vite][22m[39m server restarted.
+[2m02:29:04[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m02:29:04[22m [36m[1m[vite][22m[39m server restarted.

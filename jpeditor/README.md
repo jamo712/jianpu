@@ -1,0 +1,118 @@
+# jpeditor
+
+> 开源的简谱（JP-Word / `.jpwabc`）在线排版与编辑器 · An open-source jianpu (numbered
+> musical notation) editor & typesetter.
+
+[![Release](https://img.shields.io/github/v/release/lodebar2026/jpeditor?display_name=tag)](https://github.com/lodebar2026/jpeditor/releases)
+[![Live demo](https://img.shields.io/badge/%F0%9F%8C%90%20Live%20demo-online-2b6cb0)](https://lodebar2026.github.io/jpeditor/)
+![Platform](https://img.shields.io/badge/platform-Web%20%7C%20macOS%20%7C%20Windows-555)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## 快速入口 / Quick start
+
+| | 入口 | 说明 |
+| :-: | --- | --- |
+| 🌐 | **[在线使用 / Live demo](https://lodebar2026.github.io/jpeditor/)** | 免安装，浏览器直接打开 |
+| 🍎 | **[macOS 版下载](https://github.com/lodebar2026/jpeditor/releases/latest)**（`.dmg`，Apple Silicon） | 首次打开提示“已损坏”见 [macOS 打不开](docs/macOS-打不开.md) |
+| 🪟 | **[Windows 版下载](https://github.com/lodebar2026/jpeditor/releases/latest)**（`x64-setup.exe`） | 安装包，Windows 10/11 x64 |
+
+简谱（JP-Word / `.jpwabc`）与**文本谱**（番茄简谱 / 诗歌本动态谱）排版与编辑器。
+
+左侧高亮代码编辑器，右侧实时简谱预览，支持点选、翻页、**文本谱原生编辑**（番茄简谱脚本 /
+诗歌本文本谱，原版与 PPT 双版面）、**简谱与五线谱混排**（加载 MusicXML 排版）、MusicXML
+导入导出、**简谱图片识别（OMR）**、**ABC 记谱导入**、**乐谱播放**，以及导出
+PDF / PNG / MIDI / 矢量 PPTX。
+
+![首页](docs/screenshot-start.png)
+
+![界面](docs/screenshot.png)
+
+## English
+
+**jpeditor** is an open-source editor and typesetter for **jianpu** (Chinese
+numbered musical notation) in the `.jpwabc` (JP-Word) format. Edit the score as
+text on the left and see a live SVG preview on the right. It also natively supports
+**plain-text jianpu scripts** (Fanqie / Shigeben — the latter known as "dynamic score"
+in the *Shigeben* app). It supports **mixed
+jianpu + staff (Western) notation** typeset from MusicXML, MusicXML import & export,
+**optical music recognition (OMR)** of jianpu images, **ABC notation import**,
+**score playback**, and export to
+**PDF / PNG / MIDI / vector PPTX**. It runs **in the browser**
+(no install) and as a lightweight **Windows / macOS desktop app** (Tauri 2).
+
+- 🌐 Live demo: <https://lodebar2026.github.io/jpeditor/>
+- 🍎 macOS (Apple Silicon, `.dmg`): [latest release](https://github.com/lodebar2026/jpeditor/releases/latest)
+- 🪟 Windows (x64 installer, `.exe`): [latest release](https://github.com/lodebar2026/jpeditor/releases/latest)
+
+## 特性
+
+- **`.jpwabc` 实时编辑**：CodeMirror 6 编辑器 + 语法高亮，编辑即重排重渲染
+- **SVG 矢量渲染**：乐谱以 SVG 绘制，分辨率无关；用浏览器 `getBBox` /
+  `getComputedTextLength` 测量，与渲染同一引擎、天然一致
+- **点选与高亮**：点击音符/歌词即选中（CSS 高亮，不重渲染），状态栏显示信息
+- **分页**：按比例自动分页（16:9 / 4:3 / A4），可设每页行数
+- **简谱图片识别（OMR）**：拖入简谱照片/截图即识别为 123 简谱文本再排版。**本地识别**、
+  浏览器/桌面均可、可离线：连通域几何启发 + PaddleOCR PP-OCRv6_small 数字/歌词识别，含逐音节↔音符
+  对齐与页眉标题/词曲/调号识别
+  - **识别核对视图**：识别后自动进入「识别 / 排版」可切换模式，把识别结果按源图坐标叠加在二值图上
+    比对——支持原位叠加 / 附近浮窗 / 仅原图三种视图；点选识别对象即选中对应 123 代码，
+    悬停高亮并弹出整行 / 页眉浮窗，便于逐音校对
+- **ABC 记谱**：拖入或「打开」`.abc` 文件即原生解析、排为简谱，可直接编辑保存原文，
+  代码与谱面双向定位到音符；支持多声部、连奏、重复 / volta、和弦、装饰音、broken-rhythm、
+  调号变更等
+- **文本谱（番茄简谱 / 诗歌本动态谱）**：两套纯文本简谱记谱语言作为**第一等源格式**——
+  打开或拖入即编原文（自动嗅探方言、语法高亮、诊断提示），按各自的排版规则渲染
+  「原版」连续长图与「展开」16:9 分页两种版面，支持四声部并排、和弦、力度、倚音、跳房子等；
+  可导出 MusicXML（由文本谱直出，保留和弦/力度/多声部）、`.jpwabc`、MIDI、矢量 PPTX，
+  也能直接试听（光标逐音高亮跟随）。诗歌本文本谱即《诗歌本》app 里所说的「动态谱」。
+  见 [docs/实现/文本谱.md](docs/实现/文本谱.md)
+- **乐谱播放**：内置播放，光标跟随当前音符，两路音源；按谱面标注的速度（`.Title` 的
+  `Expression = {♩=76}`）演奏，工具条可再调 ×0.5～×2 倍速，试听与导出 MIDI 共用
+- **乐句分析排版**：MusicXML / OMR 导入时按乐句自动断行——综合歌词标点、音乐信号（延长号 /
+  终止线 / 长音 / 休止 / 连线）与重复旋律结构，在小节边界找乐句断点并凑成疏密适中的行长
+  （每页至多 4 行、末页 3+2）
+- **文件**：打开 / 保存 / 另存为 / 拖拽打开（UTF-16LE 编解码，兼容 JP-Word）
+
+## 安装与使用
+
+- **浏览器在线版**（免安装）：<https://lodebar2026.github.io/jpeditor/>
+- **macOS 版**（Apple Silicon，`jpeditor_<版本>_aarch64.dmg`）：
+  [最新 Release](https://github.com/lodebar2026/jpeditor/releases/latest)
+- **Windows 版**（x64，`jpeditor_<版本>_x64-setup.exe`）：
+  [最新 Release](https://github.com/lodebar2026/jpeditor/releases/latest)
+- macOS 首次打开提示“已损坏”或“无法验证开发者”？见
+  [docs/macOS-打不开.md](docs/macOS-打不开.md)（应用未签名，属正常现象，一条命令即可解决）。
+
+## 开发
+
+技术栈、构建命令、分层与模块地图见 [docs/架构.md](docs/架构.md)。回归脚本与测试语料不在本仓库。
+
+## 进度
+
+还要做什么见 [docs/待办.md](docs/待办.md)。
+
+## 致谢
+
+本项目站在这些工作之上，一并致谢：
+
+- [open-fanqie](https://github.com/Linho1219/open-fanqie)（MIT）—— 番茄简谱脚本的第三方开源
+  解析/渲染实现；番茄简谱脚本规范文档见 <https://fqdoc.linho.cc/>
+- [Bravura / SMuFL](https://github.com/steinbergmedia/bravura)（Steinberg，SIL OFL）——
+  音乐字体与字形元数据
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)（Apache-2.0）—— OMR 里数字与歌词的
+  识别模型；推理运行时用 [onnxruntime-web](https://github.com/microsoft/onnxruntime) 与
+  [tesseract.js](https://github.com/naptha/tesseract.js)
+- [CodeMirror 6](https://codemirror.net/)、
+  [Tauri 2](https://tauri.app/)、[Vite](https://vite.dev/)、[TypeScript](https://www.typescriptlang.org/)
+  —— 编辑器 / 解析 / 桌面外壳 / 构建
+- [opencc-js](https://github.com/nk2028/opencc-js)（简繁转换）、
+  [pdf.js](https://mozilla.github.io/pdf.js/)（PDF 栅格化）、
+  [jsPDF](https://github.com/parallax/jsPDF)（PDF 导出）、
+  [smplr](https://github.com/danigb/smplr)（试听音源）、
+  [fflate](https://github.com/101arrowz/fflate)（PPTX 打包）、
+  [opentype.js](https://opentype.js.org/)（字形轮廓）
+
+## 许可
+
+本项目代码以 MIT 授权（见 [LICENSE](LICENSE)）。随附 Bravura 字体按 SIL OFL 授权
+（见 `public/redist`）；各第三方依赖的许可以其自身声明为准。

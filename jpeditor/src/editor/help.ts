@@ -1,0 +1,760 @@
+// 帮助对话框：四个标签页（功能帮助、可视化编辑、记谱法、关于）。只读，自建 overlay（参照 export.ts 的
+// showExportDialog），复用 .modal-overlay/.modal-box 样式 + 本文件专属的 .help-* 样式。
+// 功能帮助 = 可展开主题列表（<details>）；记谱法 = 分节说明 + 实时渲染的 SVG 示例。
+import type { App } from "./app";
+import { PaintResources, ScorePainter } from "../layout/painter";
+import { JpwFile, LayoutSection } from "../jpword/jpwfile";
+import { jpwToScoreDoc } from "../model/fromjpw";
+import { jianpuInputOfJpw } from "../model/jianpuinput";
+import { PlayItem } from "../score/playorder";
+import type { MetaData } from "../smufl/smufl";
+import { isTauriRuntime } from "./fileio";
+import { FEEDBACK_EMAIL, openFeedbackMail } from "./feedback";
+import { VISUAL_ACTIONS } from "./visual/keys";
+import {
+  APP_VERSION, HOMEPAGE, checkForUpdate, isAutoCheckEnabled, openExternal,
+  promptUpdate, setAutoCheckEnabled,
+} from "./update";
+
+// ---- 记谱法示例的渲染 -------------------------------------------------------
+// 从 app.ts 搬来：它用的是一次性的 painter、不碰实时谱面，和编辑器本身没有关系，
+// 只有本文件（帮助对话框的「记谱法」页）调它。
+
+/**
+ * Render a standalone `.jpwabc` snippet to its own `<svg>` for the help /
+ * notation documentation examples. Uses a throwaway painter (does not touch
+ * the live score) sharing this app's SMuFL metadata. Returns null on parse/
+ * layout failure so the caller can silently drop unsupported examples.
+ * The svg keeps the full page viewBox; crop to content via getBBox after it
+ * is attached to the DOM.
+ *
+ * `titlePage: true` renders the standalone title page (Title/SubTitle/credit/
+ * expression layout); otherwise renders the first content page with its
+ * footer (running title + page number) stripped so only the music remains.
+ */
+export function renderExampleSvg(
+meta: MetaData,
+fontSize: number,
+jpwabc: string, opts: { width?: number; height?: number; titlePage?: boolean } = {},
+): SVGSVGElement | null {
+  const width = opts.width ?? 1600;
+  const height = opts.height ?? 540;
+  let f: JpwFile | null;
+  try {
+    f = JpwFile.fromString(jpwabc);
+  } catch {
+    return null;
+  }
+  if (!f) return null;
+  let score;
+  try {
+    score = jianpuInputOfJpw(jpwToScoreDoc(f));
+  } catch {
+    return null;
+  }
+  if (!score) return null;
+  // Lyric-less snippets get pass=0 → empty playData → blank layout. Synthesize
+  // a single play pass over all measures so examples without .Words still render.
+  if (score.playData.measures.length === 0 && score.parts[0]) {
+    const pi = new PlayItem();
+    pi.pass = 1;
+    pi.mid = 0;
+    pi.end = score.parts[0].measures.length;
+    score.playData.measures.push(pi);
+    score.playData.isSimpple = true;
+  }
+  const p = new ScorePainter(PaintResources.fixed(meta));
+  const breakDesc = f.getSection(LayoutSection)?.desc ?? null;
+  try {
+    p.loadSync({
+      view: "original",
+      score,
+      breakDesc,
+      style: null,
+      fontSize,
+      // 示例画在压暗的米白纸上（styles.css 的 --help-paper），墨色也从纯黑收一档，
+      // 免得深色界面上黑白对比过硬。真正的谱面预览仍是纯白纸 + 用户设定的颜色。
+      ink: 0xff1a1a1a,
+      page: { w: width, h: height },
+      // 标题页那一种：第 0 页是独立的标题页；否则只排谱行、取第一页
+      snippet: !opts.titlePage,
+    });
+    if (p.pageCount === 0) return null;
+    return p.renderPage(0);
+  } catch {
+    return null;
+  }
+}
+
+
+// ---- 小工具 ----------------------------------------------------------------
+
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  cls?: string,
+  text?: string,
+): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+/** 内联富文本：把 `**粗**`、`` `代码` `` 转成 span，避免手搓一堆 createElement。 */
+function rich(text: string): DocumentFragment {
+  const frag = document.createDocumentFragment();
+  const re = /\*\*(.+?)\*\*|`(.+?)`/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    if (m.index > last) frag.append(text.slice(last, m.index));
+    if (m[1] != null) frag.append(el("strong", undefined, m[1]));
+    else if (m[2] != null) frag.append(el("code", "help-code", m[2]));
+    last = re.lastIndex;
+  }
+  if (last < text.length) frag.append(text.slice(last));
+  return frag;
+}
+
+function para(text: string, cls = "help-p"): HTMLParagraphElement {
+  const p = el("p", cls);
+  p.append(rich(text));
+  return p;
+}
+
+// ---- 功能帮助 --------------------------------------------------------------
+
+type Badge = "desktop" | "browser" | "mac";
+const BADGE_TEXT: Record<Badge, string> = {
+  desktop: "🖥 仅桌面版",
+  browser: "🌐 仅浏览器",
+  mac: "🍎 仅 macOS 桌面",
+};
+
+interface Topic {
+  title: string;
+  badges?: Badge[];
+  /** 段落文本（支持 **粗** 与 `代码`）。 */
+  body: string[];
+  /** 可选：额外自定义节点（如快捷键表）。 */
+  extra?: () => HTMLElement;
+}
+
+const FEATURE_TOPICS: Topic[] = [
+  {
+    title: "打开与保存文件",
+    body: [
+      "从开始页的 **导入乐谱** 打开 `.jpwabc`（本项目原生简谱格式）、`.xml` / `.musicxml`、`.abc`；也可把这些文件直接拖入页面。",
+      "右上角 **保存** 把当前简谱存成 `.jpwabc`（UTF-16LE 编码，与 JP-Word 兼容）；**导出** 用于生成 PDF、PNG、MIDI 或 PPTX。",
+      "**桌面版**：打开/保存用系统原生对话框，可直接写回磁盘；下次启动会自动恢复上次打开的文件。**浏览器版**：用网页文件选择器打开，保存则以下载方式导出。",
+    ],
+  },
+  {
+    title: "编辑与实时排版",
+    body: [
+      "左侧是 `.jpwabc` 代码编辑区，**边打字边重排**——停顿约 0.2 秒后右侧谱面自动更新。",
+      "**点选**：在谱面上点音符/小节，会高亮并在底部状态栏显示信息。",
+      "混排、识别模式下代码区只读或隐藏（详见对应主题）。",
+    ],
+  },
+  {
+    title: "翻页与缩放",
+    body: [
+      "**翻页**：工具栏 上一页 / 下一页，或键盘 `PageUp` / `PageDown`；`Ctrl/⌘+Home` 跳首页、`Ctrl/⌘+End` 跳末页。",
+      "**缩放**：工具栏 `−` / `100%` / `＋`，或 `Ctrl/⌘ +` / `-` / `0`，或按住 `Ctrl/⌘` 滚滚轮。",
+      "**macOS 桌面版**还支持触控板双指捏合缩放。",
+    ],
+  },
+  {
+    title: "识图（图片转简谱）",
+    body: [
+      "把简谱**图片**（PNG/JPG 等）拖进谱面区，会自动识别成简谱并载入编辑。识别在**本地离线**完成，浏览器版和桌面版都能用。",
+      "识别完成后默认进入「二值图 + 半透明识别结果叠加」的核对视图，配合右侧下拉选择 附近浮窗 / 原位叠加 / 仅原图 三种方式，点识别对象可定位到对应代码；工具栏 **原图对照** 可在核对视图与可编辑排版稿之间来回切换。",
+      "识别结果建议再人工校对——尤其是歌词和复杂节奏。",
+    ],
+  },
+  {
+    title: "导入 ABC / MusicXML",
+    body: [
+      "**ABC 记谱**（`.abc`）：拖入或打开后自动转成简谱排版，支持多声部、反复、一二房、和弦、装饰音、歌词等。",
+      "**MusicXML**（`.xml` / `.musicxml`）：导入后若是多声部（如四部合唱）会自动进入**混排**（五线谱 + 简谱层）。",
+    ],
+  },
+  {
+    title: "谱面布局",
+    body: [
+      "右侧「排版」顶部的四档 **展开 / 原样 / 五线谱 / 混排**：前两档是数字简谱的两种版面（PPT 为默认，投影用的笔画），后两档由 MusicXML 渲染——**五线谱**只画五线谱，**混排**在五线谱上再叠一层数字简谱；后两档需先导入图片、MusicXML 或 ABC，且此模式下左侧代码只读。",
+      "**分行方式**：选择「原始排版」可保留导入或识别时的行结构；选择「按乐句重排」会根据歌词和音乐乐句重新安排换行。文本谱（`.pu`）也支持，重排的是左侧代码本身——曲行与歌词行按乐句重切、原有的空行分组与 `[fenye]` 会被重排结果覆盖；再点「原始排版」即可逐字还原（Ctrl+Z 也可整体撤销）。",
+      "这些工具只会在当前文件支持时出现。",
+    ],
+  },
+  {
+    title: "播放",
+    body: [
+      "工具栏 **试听** 按钮会随状态显示 播放 / 暂停 / 继续；旁边的 ■ 停止并回到曲首。简谱上当前发声的音符会高亮，五线谱与混排则用一条纵贯整行谱表的播放线标出位置。",
+      "**进度条**可拖动定位，右侧显示已播 / 总长（点一下切换成剩余时间）。播放或暂停中点谱面上的音符，会从那个音接着播；停止时点音符或拖进度条，下次从那里开始。",
+      "播放中改速度，从当前位置按新速度接着播。",
+      "多声部时可在 **设置** 里调各声部音量。",
+      "**macOS 桌面版**可使用系统原生音色，音质更好。",
+    ],
+  },
+  {
+    title: "导出",
+    body: [
+      "工具栏 **导出**。简谱模式可导出 **PPTX**（矢量，逐页成幻灯片）和 **MIDI**（含反复/力度/声部音量）。",
+      "五线谱 / 混排模式可导出当前页 **PNG**、全部页面 **PDF** 和 **MIDI**，均直接下载。导出内容与当前那一档预览（含简谱层的有无）保持一致。",
+    ],
+  },
+  {
+    title: "简繁转换",
+    body: [
+      "工具栏 **简繁** 可整篇转换源码中的中文——歌词、标题、词曲信息都会转，乐谱代码一字不动。",
+      "方向可选 自动检测 / 简体 → 繁体 / 繁体 → 简体；自动检测按当前文本的字形判定。歌词里的 `/`、`-` 等记号位置不受影响，词组也不会被它们拆开（`日光/之下` 仍按整词转换）。转换改的是源码本身，`Ctrl/⌘+Z` 可一次撤销。",
+    ],
+  },
+  {
+    title: "设置",
+    body: [
+      "工具栏 **设置** 可调整：谱面比例（16:9 / 4:3 / A4）、每页行数、字号（基础 / 标题 / 词曲信息）、颜色。",
+      "多声部简谱还有各声部音量；五线谱 / 混排模式下可勾选「隐藏小节号」，要不要保留数字简谱层则由顶部选「五线谱」还是「混排」决定。",
+    ],
+  },
+  {
+    title: "键盘快捷键",
+    body: [],
+    extra: shortcutTable,
+  },
+];
+
+function shortcutTable(): HTMLElement {
+  const rows: [string, string][] = [
+    ["放大 / 缩小", "Ctrl/⌘ +  ·  Ctrl/⌘ -"],
+    ["复位缩放 100%", "Ctrl/⌘ 0"],
+    ["上一页 / 下一页", "PageUp  ·  PageDown"],
+    ["首页 / 末页", "Ctrl/⌘ Home  ·  Ctrl/⌘ End"],
+    ["按 Ctrl/⌘ 滚轮", "以指针为中心缩放"],
+  ];
+  const table = el("table", "help-shortcuts");
+  for (const [act, key] of rows) {
+    const tr = el("tr");
+    tr.append(el("td", undefined, act), el("td", undefined, key));
+    table.append(tr);
+  }
+  return table;
+}
+
+function buildFeatureHelp(): HTMLElement {
+  const pane = el("div", "help-pane");
+  pane.append(para("下面列出编辑器已有的功能，点标题展开查看详情。带徽标的功能在桌面版与浏览器版行为不同。", "help-intro"));
+  for (const t of FEATURE_TOPICS) {
+    const det = el("details", "help-topic");
+    const sum = el("summary");
+    sum.append(el("span", "help-topic-title", t.title));
+    for (const b of t.badges ?? []) sum.append(el("span", "help-badge", BADGE_TEXT[b]));
+    det.append(sum);
+    for (const line of t.body) det.append(para(line));
+    if (t.extra) det.append(t.extra());
+    pane.append(det);
+  }
+  return pane;
+}
+
+// ---- 可视化编辑 -------------------------------------------------------------
+
+/** 可视化编辑的操作说明。快捷键表由 `visual/keys.ts` 的动作表生成，与实际绑定不会脱节；
+ *  各阶段新增的操作同步写进这里。 */
+const VISUAL_TOPICS: Topic[] = [
+  {
+    title: "两种模式、两种光标",
+    body: [
+      "在谱面上直接改谱：**点一下谱面**让它接管键盘，右上角显示当前模式。改动都落回左侧源码，源码仍是唯一的真身。",
+      "**编辑模式**（方块光标）：方块罩住选中的元素，键入的操作只作用于它。在谱面上点一个音符（或挂在它上面的附点、和弦名、装饰）就进入编辑模式；点音符只选中它本身（升降号、唱名、八度点），不带减时线与附点。**附点、减时线、增时线、小节线、圆滑线都能单独点中**——点谁选谁，选中后按 `Delete` 或 `Backspace` 只删这一样（删减时线 = 时值回到四分音符，删小节线 = 前后两小节并成一节，删圆滑线 = 两个括号一起去掉，删增时线 = 短一拍）。",
+      "**插入模式**（竖线光标）：竖线落在两个元素之间，操作在光标处插入。点两个音符之间的空白处就进入插入模式。",
+      "**文字是单击选中、双击才改**：点歌词、标题、副标题、词曲署名、调号拍号，**单击**只把它整个选中（方块罩住，键盘仍归谱面，可以直接按 `Delete` 删掉这段文字）；**双击**才进插入模式——竖线落在源码里点中的那个字前后，键盘交给源码区，接着打字就是改这段文字。歌词一次只点中一段里的一个字。源码区里光标停在这些字段上时，谱面上对应的文字也跟着亮、竖线画在同一处。",
+      "`Insert` 或 `i` 从编辑模式切到插入模式（竖线落在选中元素后面），`Esc` 切回编辑模式（方块罩住光标前面那个元素）。",
+      "两种光标**在源码区与谱面同时显示**：谱面有焦点时，源码区里选中的音符 token 带方框、插入位置有一条闪烁的竖线；反过来在源码区移动光标，谱面上的光标跟着走。",
+    ],
+  },
+  {
+    title: "选中与移动",
+    body: [
+      "`←` / `→` 在音符、增时线、小节线、换行符之间逐个移动；`Shift+←` / `Shift+→` 扩大选区；`Home` / `End` 跳到谱面上这一行的头尾。",
+      "`Shift` + 点击：从当前选区一直选到点中的音符。",
+    ],
+  },
+  {
+    title: "改音符",
+    body: [
+      "选中音符（编辑模式）后：数字 `1`–`7` 改唱名、`0` 改成休止；`↑` / `↓`（或 `'` / `,`）升降八度；`#` `b` `n` 加升号、降号、还原号（再按一次取消）；`.` 加减附点。选中一段时八度与升降号整段一起改。",
+      "`_` 时值减半（有增时线先去掉一半拍数，否则加一条减时线），`=` 时值加倍（有减时线先去一条，否则加增时线），`-` 在后面加一条增时线。",
+      "`f` 加去延长号，`>` 加去重音。123、ABC、`.jpwabc`、文本谱都能在谱面上改谱；各格式写法不同（如 ABC 写音名、升降号是绝对的，`.jpwabc` 的增时线不能与减时线、附点连写），改出来的原文按各自的规范写。",
+    ],
+  },
+  {
+    title: "插入与删除",
+    body: [
+      "插入模式下键入数字就在光标处插入一个音符，时值是右上角显示的「当前时值」，`_` / `=` 调它；`-` 插入增时线，`|` 插入小节线。",
+      "`Delete` / `Backspace`：编辑模式删掉选中的东西——删音符连同它的增时线、和弦名、装饰一起删；插入模式删光标后面 / 前面那个元素。",
+    ],
+  },
+  {
+    title: "换行与换页",
+    body: [
+      "`Enter` 在选中元素后面（插入模式：光标处）换行，`Shift+Enter` 换页；落在小节末时小节线留在前一行。",
+      "ABC 的换行就是代码行末：换行时代码行拆成两行、删换行符时两行接成一行，`w:` 同样跟着拆并。文本谱的换行是另起一行 `Q:`：换行时 `Q:`、`C:` 行一起切开，点行末的换行符再按 `Delete` 与下一行合并。`.jpwabc` 的歌词按锚点对齐，增删音符、小节线、换行后会自动重算各段的 `@小节,音符`。",
+      "**歌词跟着拆**：123 的 `$` 结束一行曲，紧跟在代码行后的 `w:` 只挂最后一行曲。所以换行时代码行在光标处拆成两行，每条 `w:` 也按对位格数拆成两半，前一半挪到前一行曲下面；删掉换行符则反过来，两边的词逐段接起来（前一行的词不够长用 `/` 补格）。",
+      "歌词用了 `+:` 续行的行曲暂不能自动拆分，会提示在源码里改。",
+    ],
+  },
+  {
+    title: "挂在音符上的记号",
+    body: [
+      "**加圆滑线**：选中一段音（`Shift+→` 扩选或 `Shift`+点击），按 `s`（或 `(`）；首尾已有同样一条就去掉。**加延音线**：选中一个音按 `t`，连到后面同音高的那个音，再按一次去掉。123 里两者都写成括号，区别只在连的是不是同音。",
+      "和弦名、延长号等装饰、段落注记、圆滑线/延音线都可以单独选中：直接在谱面上点它（和弦名、装饰、注记），或先选中音符再按 `Tab` 在它挂的记号之间轮换，轮完一圈回到音符本身。",
+      "选中记号后，源码区同时选中它对应的那段原文（如 `\"G\"`、`!fermata!`、圆滑线的括号），按 `Delete` 删掉；删圆滑线/延音线时两个括号一起删。",
+    ],
+  },
+  {
+    title: "格式标记（换行符、换页符）",
+    body: [
+      "排版区右上角的 **¶** 按钮（或 `Ctrl/⌘+Shift+M`）开关格式标记：谱面每行行末显示换行符 `↵`，换页处显示 `⤓`；源码里对应的 `$`、`$$`、`$(…)`、`[fenye]` 也会淡色标出。",
+      "点一下换行符即选中它。文本谱（番茄 / 诗歌本）的换行就是另起一行 `Q:`，原文里没有单独的符号。",
+    ],
+  },
+  {
+    title: "右键菜单与记号面板",
+    body: [
+      "**右键**谱面：先按点击的规则选中（音符、记号、换行符，空白处落插入光标），再弹出对它能做的操作，每项右边写着快捷键。",
+      "排版区右上角 **面板** 打开记号面板：唱名、八度、升降号、时值、圆滑线/延音线、延长号、重音、小节线、换行换页、删除都能用鼠标点；当前模式下用不了的按钮是灰的。按钮上画的是谱面上的符号（`1̇` 高音点、`1̲` 减时线、`⌢` 圆滑线……），鼠标停在上面显示名称与快捷键。",
+      "面板与菜单调用的是同一张快捷键表里的动作，与键盘完全一致。",
+    ],
+  },
+  {
+    title: "改音时发声",
+    body: [
+      "改唱名、八度、升降号或插入音符后，会用试听同款的钢琴音色短促地响一下（按调号推音高），录入时凭耳朵就能核对。正在试听时不响。",
+      "在 **设置** 里取消勾选「改音时发声」即可关掉。",
+    ],
+  },
+  {
+    title: "小节时值自检",
+    body: [
+      "每个小节的时值按拍号逐一核对，拍数对不上的小节在谱面上以淡红底标出（悬停显示「差 1/2 拍」之类的说明），源码里该小节第一个音下画红波浪线；右上角显示共几处，点一下依次跳过去。",
+      "放过的合法情形：弱起的第一小节、首尾两小节相加恰好一小节、被反复记号劈开的相邻两个不满小节（两者相加恰好一小节）；混合拍（`M:3/4 4/4`）对上任一拍号即算对；没有拍号的散板不查。",
+      "右上角 **拍** 按钮开关这项检查。**图片识谱**完成后也用同一套检查，在原图核对视图上把拍数不对的小节圈出来（多半是增时线、减时线读错）。",
+    ],
+  },
+  {
+    title: "撤销与重做",
+    body: [
+      "谱面上的 `Ctrl/⌘+Z` / `Ctrl/⌘+Shift+Z` 与源码区共用同一份撤销记录，在哪边撤销都一样。",
+    ],
+  },
+  {
+    title: "快捷键一览",
+    body: ["以下快捷键在**谱面有焦点**时生效（先点一下谱面）。`/` 不绑定，留给歌词对位。"],
+    extra: visualShortcutTable,
+  },
+];
+
+function visualShortcutTable(): HTMLElement {
+  const table = el("table", "help-shortcuts");
+  // 按分组归拢（动作表里同组的不一定挨着），组的先后按首次出现
+  const groups = new Map<string, typeof VISUAL_ACTIONS[number][]>();
+  for (const a of VISUAL_ACTIONS) groups.set(a.group, [...(groups.get(a.group) ?? []), a]);
+  for (const [group, actions] of groups) {
+    const head = el("tr");
+    const th = el("th", undefined, group);
+    th.colSpan = 3;
+    head.append(th);
+    table.append(head);
+    for (const a of actions) {
+      const tr = el("tr");
+      const mode = a.modes ? (a.modes[0] === "edit" ? "编辑模式" : "插入模式") : "";
+      tr.append(el("td", undefined, a.label), el("td", undefined, a.keyText), el("td", undefined, [a.help, mode && `（仅${mode}）`].join("")));
+      table.append(tr);
+    }
+  }
+  return table;
+}
+
+function buildVisualHelp(): HTMLElement {
+  const pane = el("div", "help-pane");
+  pane.append(para("在谱面上直接选中、插入、修改音符与记号，改动实时写回左侧源码。适用于有源码区的格式（123、`.jpwabc`、文本谱、ABC）的简谱「展开」「原样」两档。", "help-intro"));
+  for (const t of VISUAL_TOPICS) {
+    const det = el("details", "help-topic");
+    const sum = el("summary");
+    sum.append(el("span", "help-topic-title", t.title));
+    det.append(sum);
+    for (const line of t.body) det.append(para(line));
+    if (t.extra) det.append(t.extra());
+    pane.append(det);
+  }
+  return pane;
+}
+
+// ---- 记谱法 ----------------------------------------------------------------
+
+interface NoteEx {
+  /** 小节标题。 */
+  title: string;
+  /** 「常用」或「进阶」定位标签。 */
+  level: "常用" | "进阶";
+  /** 说明段落（支持 **粗** 与 `代码`）。 */
+  body: string[];
+  /** 展示给用户看的源码（通常是 .Voice 里的一行）。 */
+  code: string;
+  /** 实际用于渲染的完整 jpwabc；缺省时用默认包裹 code。若 code 以 `.` 开头（含段头）则直接整体渲染。 */
+  render?: string;
+  /** 渲染独立的标题页（展示 Title/SubTitle/词曲 版式）而非乐谱内容页。 */
+  titlePage?: boolean;
+}
+
+/** 把一段 .Voice 内容包成可渲染的最小完整 jpwabc（空标题，只设调号/拍号，避免抬头干扰）。 */
+function wrapVoice(voice: string, key = "1=C", meter = "4/4"): string {
+  return `.Title\nKeyAndMeters = {${key},${meter}}\n.Voice\n${voice}\n`;
+}
+
+const GLOSSARY: [string, string][] = [
+  ["唱名 1–7", "简谱用数字 1234567 表示 do re mi fa so la si 七个音，`0` 是休止（不出声）。"],
+  ["八度点", "音符上方或下方的小圆点，往上一个点高八度、往下一个点低八度。"],
+  ["减时线", "写在音符**下方**的短横线，一条把时值减半（八分音符），两条再减半（十六分）。"],
+  ["增时线", "音符**右侧**的横线 `-`，每条把时值延长一拍。"],
+  ["附点", "音符右侧的小圆点 `.`，把时值延长一半（如四分附点 = 四分 + 八分）。"],
+  ["小节线 / 拍号", "`|` 分隔小节；`拍号` 如 `4/4` 表示每小节四拍、以四分音符为一拍。"],
+  ["调号", "如 `1=C` 表示 do 唱作 C，决定整首曲子的音高基准。"],
+  ["连音线 / 延音线", "音符间的弧线：跨不同音高叫圆滑线（连奏），跨相同音高叫延音线（把两音连成一个长音）。"],
+];
+
+const NOTATION: NoteEx[] = [
+  {
+    title: "音符与休止",
+    level: "常用",
+    body: [
+      "简谱用数字 **1–7** 表示七个唱名（do re mi fa so la si），**0** 表示**休止符**（该拍不发声）。",
+      "音符之间可以留空格，也可以不留。",
+    ],
+    code: "1 2 3 4 5 6 7 0",
+  },
+  {
+    title: "高低八度（八度点）",
+    level: "常用",
+    body: [
+      "**八度点**：音符**上方**加一个 `'`（撇号）升高一个八度，**下方**加一个 `,`（逗号）降低一个八度；加两个点就是两个八度。",
+      "在源码里写在数字**后面**：`1'` 是高音 do，`1,` 是低音 do。",
+    ],
+    code: "1, 1 1' 5, 5 5'",
+  },
+  {
+    title: "升号与降号",
+    level: "常用",
+    body: [
+      "在数字**前**加 `#` 升半音、加 `b` 降半音。",
+      "例如 `#4` 是升 fa、`b7` 是降 si。",
+    ],
+    code: "1 #1 2 #2 3 4 #4 5",
+  },
+  {
+    title: "时值：减时线与十六分",
+    level: "常用",
+    body: [
+      "**减时线**（音符下方的下划线 `_`）把时值减半：一条 `_` 是八分音符，两条 `__` 是十六分音符。",
+      "相邻的短音符会自动用横梁连起来。",
+    ],
+    code: "1 2 3_ 3_ 4 5__ 5__ 5__ 5__",
+  },
+  {
+    title: "时值：附点与增时线",
+    level: "常用",
+    body: [
+      "**附点** `.`（音符右侧小圆点）把时值延长一半：`5.` 是附点四分音符。常与减时线搭配成 `5. 5_`（附点节奏）。",
+      "**增时线** `-`（音符右侧横线）每条延长一拍：`5-` 是二分音符、`5---` 是全音符。",
+    ],
+    code: "5. 5_ 5 5 |1- 1 |1--- |",
+  },
+  {
+    title: "小节线、拍号与调号",
+    level: "常用",
+    body: [
+      "`|` 是**小节线**，分隔小节。曲子的**拍号**和**调号**写在 `.Title` 段的 `KeyAndMeters` 里，格式 `{声部号=调,拍号}`，如 `{1=G,3/4}`。",
+      "拍号也可以在 `.Voice` 中途改变，直接写 `3/4` 这样的记号即可。",
+    ],
+    code: ".Title\nKeyAndMeters = {1=G,3/4}\n.Voice\n5 1' 1' |6 1' 1' |5 4 3 |2- 0 |",
+  },
+  {
+    title: "反复记号",
+    level: "常用",
+    body: [
+      "反复记号让一段乐句重复演奏：`|:` 是反复开始、`:|` 是反复结束，中间的小节要唱两遍。",
+      "`||` 是双小节线（分句），`|]` 是终止线（曲终）。",
+    ],
+    code: "1 2 3 4 |: 5 6 7 1' :| 1--- |]",
+  },
+  {
+    title: "演唱顺序（.Repeat 段）",
+    level: "进阶",
+    body: [
+      "`.Voice` 里的 `|:` `:|` 和一、二房只是**谱面记号**；真正决定「按什么顺序、唱第几段词」的是 `.Repeat` 段。导入 MusicXML / 识图 / ABC 时会自动算好写进去，一般不用手写；要精确控制演唱顺序时再改它。",
+      "每行一条，格式 `起始小节-结束小节V段号`（小节号从 1 起）。多条按先后顺序演唱，同一段可以出现多次。下例是「1–4 小节唱两遍，第一遍用第 1 段词、第二遍用第 2 段词，再唱 5–8 小节」。",
+      "段号后加 `P` 表示**这一段唱完换页**（主歌、副歌分页时用）：`1-4V1P`。",
+      "端点还能精确到音符：起点写 `11.2` 表示从第 11 小节的**第 2 个音符**接入（跨行的长音收尾常用）；终点写 `11.1` 表示只唱到第 11 小节的**第 1 个音符**为止。",
+      "条目也可以用逗号写在同一行，`1-4V1,1-4V2` 等同于分两行。",
+    ],
+    code: ".Repeat\n1-4V1\n1-4V2\n5-8V1",
+    render:
+      ".Title\nKeyAndMeters = {1=C,4/4}\n.Voice\n1 2 3 4 |5 6 7 1' |1' 7 6 5 |4 3 2 1 |\n" +
+      "5 5 5 5 |6 6 6 6 |7 7 7 7 |1'--- |\n.Words\nW1@1,1:\n第一段词/////////////////\nW2@1,1:\n第二段词/////////////////\n" +
+      ".Repeat\n1-4V1\n1-4V2\n5-8V1\n",
+  },
+  {
+    title: "连音线与延音线",
+    level: "进阶",
+    body: [
+      "音符之间的弧线：跨**不同**音高是**圆滑线**（连奏、一弓/一口气唱），跨**相同**音高是**延音线**（把两个音连成一个更长的音）。",
+      "在源码里用圆括号 `( ... )` 括住要连起来的音符。",
+    ],
+    code: "(5 6) (1' 1') 3 2 |1--- |",
+  },
+  {
+    title: "延音记号（fermata）",
+    level: "进阶",
+    body: [
+      "在音符**前面**写 `{YanYin}` 加**延音记号**（fermata，音符上方的「◠」），表示这个音可以自由延长。",
+    ],
+    code: "5 5 5 5 |{YanYin}1 - - - |]",
+  },
+  {
+    title: "歌词",
+    level: "常用",
+    body: [
+      "歌词写在 `.Words` 段。前缀 `W1@1,1:` 表示第 1 段歌词、从第 1 小节第 1 个音符开始对齐。",
+      "每个字**默认对一个音符**；用 `/` 表示这个音符**不换字**（一字多音的拖腔）。多段歌词用 `W1` `W2` 分别写。",
+    ],
+    code: ".Title\nKeyAndMeters = {1=C,4/4}\n.Voice\n1 2 3 4 |5- 5- |\n.Words\nW1@1,1:\n我 们 歌 唱 主/爱/",
+    render:
+      ".Title\nTitle = {示例}\nKeyAndMeters = {1=C,4/4}\n.Voice\n1 2 3 4 |5- 5- |\n.Words\nW1@1,1:\n我 们 歌 唱 主/爱/\n",
+  },
+  {
+    title: "标题信息",
+    level: "常用",
+    body: [
+      "`.Title` 段放曲子的抬头信息：`Title` 是标题（居中显示在最上方）、`WordsByAndMusicBy` 是词曲作者（格式 `{词作者,曲作者}`）；`KeyAndMeters` 设置调号与拍号。",
+      "`Expression` 记速度与表情：写成 `{♩=76}` 就是每分钟 76 拍，也可以写表情文字如 `热烈欢快地`。试听与导出 MIDI 按 `{♩=…}` 走，不写则按 ♩=90；工具条「试听」旁的下拉可在此基础上调倍速（×0.5～×2）。",
+      "JP-Word 自己把这个音符符号存成字母 `J`（靠音乐字体显示成 ♩），读取时两种写法都认，所以从 JP-Word 拿来的谱速度不会丢。",
+      "下面这段会渲染出标题页的抬头版式。",
+    ],
+    code: ".Title\nTitle = {奇异恩典}\nKeyAndMeters = {1=G,3/4}\nWordsByAndMusicBy = {John Newton,美国民谣}\n.Voice\n5 1'. 1'_ 3' |2'- 1'- |",
+    titlePage: true,
+  },
+];
+
+function buildNotationHelp(app: App): HTMLElement {
+  const pane = el("div", "help-pane");
+  pane.append(
+    para(
+      "`.jpwabc` 是本项目使用的**纯文本简谱格式**，用普通文本分段描述乐谱：`.Title`（抬头）、`.Voice`（旋律，必需）、`.Words`（歌词）等，段头独占一行、以 `.` 开头。下面按**常用在前**的顺序介绍常见记号，每条都附实时渲染的效果。",
+      "help-intro",
+    ),
+  );
+
+  // 术语速查
+  const gloss = el("details", "help-glossary");
+  gloss.append(el("summary", undefined, "术语速查（点开）"));
+  const dl = el("dl", "help-gloss-list");
+  for (const [term, desc] of GLOSSARY) {
+    dl.append(el("dt", undefined, term));
+    const dd = el("dd");
+    dd.append(rich(desc));
+    dl.append(dd);
+  }
+  gloss.append(dl);
+  pane.append(gloss);
+
+  for (const ex of NOTATION) {
+    const sec = el("div", "help-section");
+    const head = el("div", "help-sec-head");
+    head.append(el("span", "help-sec-title", ex.title));
+    head.append(el("span", `help-level help-level-${ex.level === "常用" ? "common" : "adv"}`, ex.level));
+    sec.append(head);
+    for (const line of ex.body) sec.append(para(line));
+
+    const card = el("div", "help-example");
+    const pre = el("pre", "help-source");
+    pre.textContent = ex.code;
+    card.append(pre);
+
+    const renderText = ex.render ?? (ex.code.trimStart().startsWith(".") ? ex.code : wrapVoice(ex.code));
+    const svg = renderExampleSvg(app.meta, app.fontSize, renderText, { titlePage: ex.titlePage });
+    if (svg) {
+      const box = el("div", "help-render");
+      svg.classList.add("help-svg");
+      box.append(svg);
+      card.append(box);
+    }
+    sec.append(card);
+    pane.append(sec);
+  }
+  return pane;
+}
+
+/** 渲染出的示例 svg 默认是整页 viewBox；attach 到 DOM 后裁剪到内容紧包围盒。 */
+function cropExamples(root: HTMLElement): void {
+  for (const svg of Array.from(root.querySelectorAll<SVGSVGElement>("svg.help-svg"))) {
+    let bb: DOMRect;
+    try {
+      // svg.getBBox() gives the union bbox of all descendants in viewBox space,
+      // accounting for their transforms (unlike a child <g>.getBBox()).
+      bb = svg.getBBox();
+    } catch {
+      continue;
+    }
+    if (bb.width <= 0 || bb.height <= 0) continue;
+    const pad = 6;
+    const vw = bb.width + pad * 2;
+    const vh = bb.height + pad * 2;
+    svg.setAttribute("viewBox", `${bb.x - pad} ${bb.y - pad} ${vw} ${vh}`);
+    const dispH = Math.min(96, Math.max(36, vh));
+    svg.style.height = `${dispH}px`;
+    svg.style.width = `${(vw / vh) * dispH}px`;
+  }
+}
+
+// ---- 关于页 ----------------------------------------------------------------
+// 版本号 + 主页；检查更新 / 意见反馈 / 自动检查开关三样只在桌面版出现
+// （Web 版刷新即最新，也没有邮件客户端可唤起）。
+
+function buildAboutPane(): HTMLElement {
+  const pane = el("div", "help-pane");
+  pane.append(el("div", "about-name", "简谱编辑器 jpeditor"));
+  pane.append(el("div", "about-version", `版本 ${APP_VERSION}`));
+
+  const home = el("button", "about-link", HOMEPAGE);
+  home.onclick = () => {
+    if (isTauriRuntime()) void openExternal(HOMEPAGE);
+    else window.open(HOMEPAGE, "_blank", "noopener");
+  };
+  pane.append(labeledRow("项目主页", home));
+
+  if (!isTauriRuntime()) return pane;
+
+  // 状态行：检查更新与反馈都往这里写结果，不额外弹错误框。
+  const status = el("div", "about-status");
+  status.hidden = true;
+  const say = (msg: string) => {
+    status.textContent = msg;
+    status.hidden = false;
+  };
+
+  const checkBtn = el("button", undefined, "检查更新");
+  checkBtn.onclick = () => {
+    checkBtn.disabled = true;
+    say("正在检查…");
+    void checkForUpdate()
+      .then(async (r) => {
+        if (r === null) say("检查失败，请确认网络后重试");
+        else if (r === "latest") say("已是最新版本");
+        else {
+          say(`发现新版本 ${r.version}`);
+          await promptUpdate(r);
+        }
+      })
+      .finally(() => {
+        checkBtn.disabled = false;
+      });
+  };
+
+  const mailBtn = el("button", undefined, "意见反馈");
+  mailBtn.onclick = () => {
+    void openFeedbackMail().catch(() => {
+      say(`无法唤起邮件客户端，请手动发信至 ${FEEDBACK_EMAIL}`);
+    });
+  };
+
+  const row = el("div", "about-buttons");
+  row.append(checkBtn, mailBtn);
+  pane.append(row, status);
+
+  const auto = el("input");
+  auto.type = "checkbox";
+  auto.checked = isAutoCheckEnabled();
+  auto.onchange = () => setAutoCheckEnabled(auto.checked);
+  const autoLabel = el("label", "about-auto");
+  autoLabel.append(auto, document.createTextNode(" 启动时自动检查更新"));
+  pane.append(autoLabel);
+
+  return pane;
+}
+
+function labeledRow(label: string, control: HTMLElement): HTMLElement {
+  const row = el("div", "about-row");
+  row.append(el("span", "about-label", label), control);
+  return row;
+}
+
+// ---- 对话框 ----------------------------------------------------------------
+
+export function showHelpDialog(app: App): void {
+  const overlay = el("div", "modal-overlay");
+  const box = el("div", "modal-box help-box");
+
+  const title = el("div", "modal-title", "帮助");
+
+  // 标签页：{ 标签, 内容, 首次显示时的补做 }
+  const notationPane = buildNotationHelp(app);
+  const pages: { label: string; pane: HTMLElement; onFirstShow?: () => void }[] = [
+    { label: "功能帮助", pane: buildFeatureHelp() },
+    { label: "可视化编辑", pane: buildVisualHelp() },
+    {
+      label: "记谱法",
+      pane: notationPane,
+      // getBBox only works once the pane is visible; crop on first reveal.
+      onFirstShow: () => cropExamples(notationPane),
+    },
+    { label: "关于", pane: buildAboutPane() },
+  ];
+
+  const tabs = el("div", "help-tabs");
+  const content = el("div", "help-content");
+  const tabBtns = pages.map((pg, i) => {
+    const btn = el("button", i === 0 ? "help-tab active" : "help-tab", pg.label);
+    pg.pane.style.display = i === 0 ? "" : "none";
+    tabs.append(btn);
+    content.append(pg.pane);
+    return btn;
+  });
+
+  const shown = new Set<number>([0]);
+  const activate = (idx: number) => {
+    pages.forEach((pg, i) => {
+      tabBtns[i].classList.toggle("active", i === idx);
+      pg.pane.style.display = i === idx ? "" : "none";
+    });
+    if (!shown.has(idx)) {
+      shown.add(idx);
+      pages[idx].onFirstShow?.();
+    }
+    content.scrollTop = 0;
+  };
+  tabBtns.forEach((btn, i) => (btn.onclick = () => activate(i)));
+
+  const footer = el("div", "modal-footer");
+  const closeBtn = el("button", undefined, "关闭");
+  footer.append(closeBtn);
+
+  box.append(title, tabs, content, footer);
+  overlay.append(box);
+  document.body.append(overlay);
+
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") close();
+  };
+  closeBtn.onclick = close;
+  overlay.onclick = (e) => {
+    if (e.target === overlay) close();
+  };
+  document.addEventListener("keydown", onKey);
+}
